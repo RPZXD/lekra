@@ -1,0 +1,10 @@
+{
+    "global": {
+        "pageTitle": "ระบบเลขาครู (LekhaKhru)",
+        "nameschool": "ระบบผู้ช่วยและแจ้งเตือนคุณครู",
+        "nameTitle": "เลขาครู",
+        "footerCredit": "ระบบเลขาครู & แจ้งเตือนผ่าน Line / Telegram © พัฒนาโดยคู่หู AI",
+        "logoLink": "logo-phicha.png",
+        "line_oa_token": "3K7fh1bhbCn0uPjgNoGQpN3jNgpwpSoMA0QaE6m4dOMJkly+SeGyDyS73+EV6wSVuLoB6M/+FwdbxRWlY6ZGuQymNTYSrFzA5xQ7AhwlwOufu+et60PnAnYK2vpyvUyy3ye0yBe7cTu+PoiFDxsmmgdB04t89/1O/w1cDnyilFU="
+    }
+}
