@@ -27,7 +27,8 @@ ob_start();
 
 <!-- Schedules Table Card -->
 <div class="glass-card rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/30 dark:border-slate-700/50 shadow-xl">
-    <div class="overflow-x-auto">
+    <!-- Desktop Table View -->
+    <div class="hidden md:block overflow-x-auto">
         <table id="schedulesTable" class="w-full text-left border-collapse">
             <thead>
                 <tr class="border-b border-slate-200 dark:border-slate-800 text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -115,6 +116,89 @@ ob_start();
                 <?php endif; ?>
             </tbody>
         </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="grid grid-cols-1 gap-4 md:hidden">
+        <?php if (empty($schedules)): ?>
+            <div class="py-10 text-center">
+                <span class="text-3xl block mb-2">🗓️</span>
+                <p class="text-slate-400 font-bold">ไม่พบตารางสอนในระบบ กรุณาเพิ่มคาบสอนแรกของคุณ</p>
+            </div>
+        <?php else: ?>
+            <?php foreach ($schedules as $sch): 
+                $dayName = Utils::getDayThaiName($sch['day_of_week']);
+                $dayColor = Utils::getDayColorClass($sch['day_of_week']);
+
+                // Construct Google Calendar URL for recurring schedule
+                $nextDate = Utils::getNextWeekdayDate($sch['day_of_week']);
+                $byDayMap = [1 => 'MO', 2 => 'TU', 3 => 'WE', 4 => 'TH', 5 => 'FR', 6 => 'SA', 7 => 'SU'];
+                $byDay = $byDayMap[$sch['day_of_week']] ?? 'MO';
+                $startTime = date('His', strtotime($sch['start_time']));
+                $endTime = date('His', strtotime($sch['end_time']));
+                
+                $gEvent = [
+                    'summary' => $sch['subject_code'] . ' - ' . $sch['subject_name'] . ' (' . $sch['class_name'] . ')',
+                    'description' => 'ห้องเรียน: ' . ($sch['room'] ?: '-'),
+                    'location' => $sch['room'] ?: '',
+                    'all_day' => false,
+                    'start_datetime' => date('Ymd', strtotime($nextDate)) . 'T' . $startTime,
+                    'end_datetime' => date('Ymd', strtotime($nextDate)) . 'T' . $endTime,
+                    'rrule' => 'FREQ=WEEKLY;BYDAY=' . $byDay
+                ];
+                $gCalUrl = Utils::getGoogleCalendarUrl($gEvent);
+              ?>
+                <div class="glass-card rounded-2xl p-5 border border-white/20 dark:border-slate-800/40 shadow-md relative">
+                    <!-- Top row: Day and class/room -->
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="inline-block px-3 py-1 rounded-full text-[10px] font-extrabold <?php echo $dayColor; ?>">
+                            <?php echo $dayName; ?>
+                        </span>
+                        <span class="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-lg">
+                            ชั้นเรียน: <?php echo htmlspecialchars($sch['class_name']); ?>
+                        </span>
+                    </div>
+
+                    <!-- Subject & Code -->
+                    <div class="mb-3">
+                        <div class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase"><?php echo htmlspecialchars($sch['subject_code']); ?></div>
+                        <h4 class="text-sm font-extrabold text-slate-800 dark:text-white mt-0.5 leading-snug">
+                            <?php echo htmlspecialchars($sch['subject_name']); ?>
+                        </h4>
+                        <div class="flex flex-wrap items-center gap-3 mt-2 text-xs font-bold text-slate-500 dark:text-slate-400">
+                            <span class="flex items-center gap-1"><i class="far fa-clock"></i> <?php echo date('H:i', strtotime($sch['start_time'])); ?> - <?php echo date('H:i', strtotime($sch['end_time'])); ?> น.</span>
+                            <?php if ($sch['room']): ?>
+                                <span class="flex items-center gap-1"><i class="fas fa-map-marker-alt"></i> ห้อง <?php echo htmlspecialchars($sch['room']); ?></span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <!-- Footer actions -->
+                    <div class="flex items-center justify-end gap-1.5 pt-3 border-t border-slate-100 dark:border-slate-800/40">
+                        <button onclick="openEditModal(<?php echo htmlspecialchars(json_encode($sch)); ?>)" 
+                                class="p-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl transition-all"
+                                title="แก้ไข">
+                            <i class="fas fa-edit text-xs"></i>
+                        </button>
+                        <a href="<?php echo $gCalUrl; ?>" target="_blank"
+                           class="p-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 rounded-xl transition-all"
+                           title="เพิ่มลง Google Calendar">
+                            <i class="fab fa-google text-xs"></i>
+                        </a>
+                        <a href="index.php?action=schedule_export_ics&id=<?php echo $sch['id']; ?>"
+                           class="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl transition-all"
+                           title="ดาวน์โหลด iCal (.ics)">
+                            <i class="fas fa-calendar-alt text-xs"></i>
+                        </a>
+                        <button onclick="confirmDelete(<?php echo $sch['id']; ?>)" 
+                                class="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-all"
+                                title="ลบ">
+                            <i class="fas fa-trash-alt text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 </div>
 

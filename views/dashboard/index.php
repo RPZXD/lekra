@@ -50,7 +50,7 @@ ob_start();
             <!-- Welcome Text -->
             <div class="text-center md:text-left">
                 <h1 class="text-xl md:text-3xl font-black text-slate-800 dark:text-white">
-                    👋 ยินดีต้อนรับ คุณครู<?php echo htmlspecialchars($teacherName); ?>
+                    👋 ยินดีต้อนรับ คุณครู<?php echo htmlspecialchars(Utils::cleanTitlePrefix($teacherName)); ?>
                 </h1>
                 <p class="text-slate-500 dark:text-slate-400 font-semibold text-sm md:text-base mt-1">
                     <i class="far fa-calendar-alt text-indigo-500 mr-2"></i>

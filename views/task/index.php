@@ -7,11 +7,6 @@ ob_start();
 ?>
 
 <!-- Action Bar -->
-<style>
-    .swal2-container {
-        z-index: 9999 !important;
-    }
-</style>
 <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
     <div>
         <h3 class="text-lg font-black text-slate-800 dark:text-white">รายการภาระงานและหน้าที่</h3>
@@ -35,7 +30,8 @@ ob_start();
 
 <!-- Tasks Table Card -->
 <div class="glass-card rounded-2xl md:rounded-3xl p-4 md:p-6 border border-white/30 dark:border-slate-700/50 shadow-xl">
-    <div class="overflow-x-auto">
+    <!-- Desktop Table View -->
+    <div class="hidden md:block overflow-x-auto">
         <table id="tasksTable" class="w-full text-left border-collapse">
             <thead>
                 <tr class="border-b border-slate-200 dark:border-slate-800 text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -59,10 +55,7 @@ ob_start();
                     <?php foreach ($tasks as $task): 
                         $completed = $task['is_completed'] == 1;
                         $taskDateThai = Utils::convertToThaiDatePlus($task['task_date']);
-                        // Check if today
                         $isToday = $task['task_date'] === date('Y-m-d');
-
-                        // Construct Google Calendar Event Array
                         $gEvent = [
                             'summary' => $task['title'],
                             'description' => $task['description'] ?: '',
@@ -109,31 +102,26 @@ ob_start();
                             </td>
                             <td class="py-3.5 text-center">
                                 <div class="flex justify-center gap-2">
-                                    <!-- Toggle Complete Button -->
                                     <a href="index.php?action=task_toggle&id=<?php echo $task['id']; ?>&status=<?php echo $completed ? '0' : '1'; ?>" 
                                        class="p-2 <?php echo $completed ? 'bg-slate-500/10 text-slate-500' : 'bg-green-500/10 text-green-600 dark:text-green-400'; ?> hover:bg-opacity-20 rounded-xl transition-all"
                                        title="<?php echo $completed ? 'เปลี่ยนเป็นยังไม่เสร็จ' : 'ทำเสร็จแล้ว'; ?>">
                                         <i class="fas <?php echo $completed ? 'fa-undo' : 'fa-check'; ?> text-xs"></i>
                                     </a>
-                                    <!-- Edit Button -->
                                     <button onclick='openEditModal(<?php echo htmlspecialchars(json_encode($task), ENT_QUOTES, 'UTF-8'); ?>)' 
                                             class="p-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl transition-all"
                                             title="แก้ไข">
                                         <i class="fas fa-edit text-xs"></i>
                                     </button>
-                                    <!-- Google Calendar Button -->
                                     <a href="<?php echo $gCalUrl; ?>" target="_blank"
                                        class="p-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 rounded-xl transition-all"
                                        title="เพิ่มลง Google Calendar">
                                         <i class="fab fa-google text-xs"></i>
                                     </a>
-                                    <!-- iCal Button -->
                                     <a href="index.php?action=task_export_ics&id=<?php echo $task['id']; ?>"
                                        class="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl transition-all"
                                        title="ดาวน์โหลด iCal (.ics)">
                                         <i class="fas fa-calendar-alt text-xs"></i>
                                     </a>
-                                    <!-- Delete Button -->
                                     <button onclick="confirmDelete(<?php echo $task['id']; ?>)" 
                                             class="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-all"
                                             title="ลบ">
@@ -146,6 +134,103 @@ ob_start();
                 <?php endif; ?>
             </tbody>
         </table>
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="grid grid-cols-1 gap-4 md:hidden">
+        <?php if (empty($tasks)): ?>
+            <div class="py-10 text-center">
+                <span class="text-3xl block mb-2">📝</span>
+                <p class="text-slate-400 font-bold">ไม่พบภาระงานในระบบ เริ่มต้นสร้างภาระงานแรกของคุณ!</p>
+            </div>
+        <?php else: ?>
+            <?php foreach ($tasks as $task): 
+                $completed = $task['is_completed'] == 1;
+                $taskDateThai = Utils::convertToThaiDatePlus($task['task_date']);
+                $isToday = $task['task_date'] === date('Y-m-d');
+                $gEvent = [
+                    'summary' => $task['title'],
+                    'description' => $task['description'] ?: '',
+                    'location' => '',
+                    'all_day' => empty($task['task_time']),
+                ];
+                if ($gEvent['all_day']) {
+                    $gEvent['start_date'] = date('Ymd', strtotime($task['task_date']));
+                    $gEvent['end_date'] = date('Ymd', strtotime($task['task_date'] . ' +1 day'));
+                } else {
+                    $timeStr = date('His', strtotime($task['task_time']));
+                    $gEvent['start_datetime'] = date('Ymd', strtotime($task['task_date'])) . 'T' . $timeStr;
+                    $endTimestamp = strtotime($task['task_date'] . ' ' . $task['task_time']) + 3600;
+                    $gEvent['end_datetime'] = date('Ymd', $endTimestamp) . 'T' . date('His', $endTimestamp);
+                }
+                $gCalUrl = Utils::getGoogleCalendarUrl($gEvent);
+            ?>
+                <div class="glass-card rounded-2xl p-5 border border-white/20 dark:border-slate-800/40 shadow-md relative transition-all duration-300 <?php echo $completed ? 'opacity-70 bg-slate-50/20 dark:bg-slate-900/10' : ''; ?>">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex flex-col">
+                            <span class="text-xs font-black text-slate-800 dark:text-white flex items-center gap-1.5 <?php echo $isToday ? 'text-indigo-600 dark:text-indigo-400' : ''; ?>">
+                                <i class="far fa-calendar-alt text-[10px]"></i>
+                                <?php echo $taskDateThai; ?>
+                                <?php if ($isToday): ?>
+                                    <span class="ml-1 px-1.5 py-0.5 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded text-[8px] font-black">วันนี้</span>
+                                <?php endif; ?>
+                            </span>
+                            <?php if ($task['task_time']): ?>
+                                <span class="text-[10px] text-slate-500 dark:text-slate-400 font-bold mt-1">
+                                    <i class="far fa-clock mr-1 text-[9px]"></i><?php echo date('H:i', strtotime($task['task_time'])); ?> น.
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        <div>
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-extrabold <?php echo $completed ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'; ?>">
+                                <?php if ($completed): ?>
+                                    <i class="fas fa-check-circle"></i> เสร็จสิ้น
+                                <?php else: ?>
+                                    <i class="fas fa-hourglass-half"></i> กำลังทำ
+                                <?php endif; ?>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <h4 class="text-sm font-extrabold text-slate-800 dark:text-white leading-snug <?php echo $completed ? 'line-through opacity-70' : ''; ?>">
+                            <?php echo htmlspecialchars($task['title']); ?>
+                        </h4>
+                        <?php if ($task['description']): ?>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 font-semibold mt-1.5 leading-relaxed <?php echo $completed ? 'line-through opacity-60' : ''; ?>">
+                                <?php echo nl2br(htmlspecialchars($task['description'])); ?>
+                            </p>
+                        <?php endif; ?>
+                    </div>
+                    <div class="flex items-center justify-end gap-1.5 pt-3 border-t border-slate-100 dark:border-slate-800/40">
+                        <a href="index.php?action=task_toggle&id=<?php echo $task['id']; ?>&status=<?php echo $completed ? '0' : '1'; ?>" 
+                           class="p-2 <?php echo $completed ? 'bg-slate-500/10 text-slate-500' : 'bg-green-500/10 text-green-600 dark:text-green-400'; ?> hover:bg-opacity-20 rounded-xl transition-all"
+                           title="<?php echo $completed ? 'เปลี่ยนเป็นยังไม่เสร็จ' : 'ทำเสร็จแล้ว'; ?>">
+                            <i class="fas <?php echo $completed ? 'fa-undo' : 'fa-check'; ?> text-xs"></i>
+                        </a>
+                        <button onclick='openEditModal(<?php echo htmlspecialchars(json_encode($task), ENT_QUOTES, 'UTF-8'); ?>)' 
+                                class="p-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl transition-all"
+                                title="แก้ไข">
+                            <i class="fas fa-edit text-xs"></i>
+                        </button>
+                        <a href="<?php echo $gCalUrl; ?>" target="_blank"
+                           class="p-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 rounded-xl transition-all"
+                           title="เพิ่มลง Google Calendar">
+                            <i class="fab fa-google text-xs"></i>
+                        </a>
+                        <a href="index.php?action=task_export_ics&id=<?php echo $task['id']; ?>"
+                           class="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl transition-all"
+                           title="ดาวน์โหลด iCal (.ics)">
+                            <i class="fas fa-calendar-alt text-xs"></i>
+                        </a>
+                        <button onclick="confirmDelete(<?php echo $task['id']; ?>)" 
+                                class="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-all"
+                                title="ลบ">
+                            <i class="fas fa-trash-alt text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
     </div>
 </div>
 

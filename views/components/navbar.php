@@ -46,7 +46,7 @@ $userName = $teacherData['name'] ?? 'คุณครู';
                 <i class="fas fa-user-tie"></i>
             </div>
             <span class="hidden sm:inline text-xs font-bold text-slate-700 dark:text-slate-200 truncate max-w-[120px]">
-                คุณครู<?php echo htmlspecialchars($userName); ?>
+                คุณครู<?php echo htmlspecialchars(Utils::cleanTitlePrefix($userName)); ?>
             </span>
         </div>
     </div>
