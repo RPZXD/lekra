@@ -246,5 +246,67 @@ class ScheduleController {
         header('Location: index.php?action=schedule');
         exit;
     }
+
+    public function exportIcs() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['Teacher_login'])) {
+            header('Location: login.php');
+            exit;
+        }
+
+        $teacherId = $_SESSION['Teacher_login'];
+        $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+        
+        $schedules = [];
+        if ($id) {
+            $sch = $this->scheduleModel->getById($id);
+            if ($sch && $sch['teacher_id'] == $teacherId) {
+                $schedules[] = $sch;
+            }
+        } else {
+            $schedules = $this->scheduleModel->getByTeacherId($teacherId);
+        }
+
+        if (empty($schedules)) {
+            $_SESSION['alert'] = ['type' => 'warning', 'message' => 'ไม่พบข้อมูลตารางสอนที่สามารถส่งออกได้'];
+            header('Location: index.php?action=schedule');
+            exit;
+        }
+
+        $byDayMap = [1 => 'MO', 2 => 'TU', 3 => 'WE', 4 => 'TH', 5 => 'FR', 6 => 'SA', 7 => 'SU'];
+
+        $events = [];
+        foreach ($schedules as $sch) {
+            $nextDate = Utils::getNextWeekdayDate($sch['day_of_week']);
+            $byDay = $byDayMap[$sch['day_of_week']] ?? 'MO';
+            
+            $startTime = date('His', strtotime($sch['start_time']));
+            $endTime = date('His', strtotime($sch['end_time']));
+            
+            $event = [
+                'uid' => 'schedule-' . $sch['id'] . '-' . $sch['teacher_id'] . '@lekrakhru',
+                'summary' => $sch['subject_code'] . ' - ' . $sch['subject_name'] . ' (' . $sch['class_name'] . ')',
+                'description' => 'ห้องเรียน: ' . ($sch['room'] ?: '-'),
+                'location' => $sch['room'] ?: '',
+                'all_day' => false,
+                'start_datetime' => date('Ymd', strtotime($nextDate)) . 'T' . $startTime,
+                'end_datetime' => date('Ymd', strtotime($nextDate)) . 'T' . $endTime,
+                'rrule' => 'FREQ=WEEKLY;BYDAY=' . $byDay
+            ];
+            $events[] = $event;
+        }
+
+        $filename = $id ? 'schedule_' . $id . '.ics' : 'schedules_all.ics';
+        $icsContent = Utils::buildIcs($events);
+
+        header('Content-Type: text/calendar; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . strlen($icsContent));
+        echo $icsContent;
+        exit;
+    }
 }
 ?>

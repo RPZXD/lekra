@@ -583,5 +583,66 @@ class TaskController {
         }
         exit;
     }
+
+    public function exportIcs() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['Teacher_login'])) {
+            header('Location: login.php');
+            exit;
+        }
+
+        $teacherId = $_SESSION['Teacher_login'];
+        $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT);
+        
+        $tasks = [];
+        if ($id) {
+            $task = $this->taskModel->getById($id);
+            if ($task && $task['teacher_id'] == $teacherId) {
+                $tasks[] = $task;
+            }
+        } else {
+            $tasks = $this->taskModel->getByTeacherId($teacherId);
+        }
+
+        if (empty($tasks)) {
+            $_SESSION['alert'] = ['type' => 'warning', 'message' => 'ไม่พบข้อมูลภาระงานที่สามารถส่งออกได้'];
+            header('Location: index.php?action=task');
+            exit;
+        }
+
+        $events = [];
+        foreach ($tasks as $task) {
+            $event = [
+                'uid' => 'task-' . $task['id'] . '-' . $task['teacher_id'] . '@lekrakhru',
+                'summary' => $task['title'],
+                'description' => $task['description'] ?: '',
+                'location' => '',
+                'all_day' => empty($task['task_time']),
+            ];
+            
+            if ($event['all_day']) {
+                $event['start_date'] = date('Ymd', strtotime($task['task_date']));
+                $event['end_date'] = date('Ymd', strtotime($task['task_date'] . ' +1 day'));
+            } else {
+                $timeStr = date('His', strtotime($task['task_time']));
+                $event['start_datetime'] = date('Ymd', strtotime($task['task_date'])) . 'T' . $timeStr;
+                $endTimestamp = strtotime($task['task_date'] . ' ' . $task['task_time']) + 3600;
+                $event['end_datetime'] = date('Ymd', $endTimestamp) . 'T' . date('His', $endTimestamp);
+            }
+            $events[] = $event;
+        }
+
+        $filename = $id ? 'task_' . $id . '.ics' : 'tasks_all.ics';
+        $icsContent = Utils::buildIcs($events);
+
+        header('Content-Type: text/calendar; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . strlen($icsContent));
+        echo $icsContent;
+        exit;
+    }
 }
 ?>

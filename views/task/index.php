@@ -24,6 +24,9 @@ ob_start();
         <button onclick="openImportModal()" class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl px-4 py-3 text-white text-xs font-bold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-95 transition-all">
             <i class="fas fa-file-import mr-2"></i>นำเข้าจากไฟล์
         </button>
+        <a href="index.php?action=task_export_ics" class="bg-gradient-to-r from-violet-500 to-indigo-600 rounded-xl px-4 py-3 text-white text-xs font-bold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:scale-[1.02] active:scale-95 transition-all">
+            <i class="fas fa-file-export mr-2"></i>ส่งออกปฏิทิน (.ics)
+        </a>
         <button onclick="openAddModal()" class="btn-primary rounded-xl px-5 py-3 text-white text-xs font-bold shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-95 transition-all">
             <i class="fas fa-plus mr-2"></i>บันทึกภาระงานใหม่
         </button>
@@ -58,6 +61,24 @@ ob_start();
                         $taskDateThai = Utils::convertToThaiDatePlus($task['task_date']);
                         // Check if today
                         $isToday = $task['task_date'] === date('Y-m-d');
+
+                        // Construct Google Calendar Event Array
+                        $gEvent = [
+                            'summary' => $task['title'],
+                            'description' => $task['description'] ?: '',
+                            'location' => '',
+                            'all_day' => empty($task['task_time']),
+                        ];
+                        if ($gEvent['all_day']) {
+                            $gEvent['start_date'] = date('Ymd', strtotime($task['task_date']));
+                            $gEvent['end_date'] = date('Ymd', strtotime($task['task_date'] . ' +1 day'));
+                        } else {
+                            $timeStr = date('His', strtotime($task['task_time']));
+                            $gEvent['start_datetime'] = date('Ymd', strtotime($task['task_date'])) . 'T' . $timeStr;
+                            $endTimestamp = strtotime($task['task_date'] . ' ' . $task['task_time']) + 3600;
+                            $gEvent['end_datetime'] = date('Ymd', $endTimestamp) . 'T' . date('His', $endTimestamp);
+                        }
+                        $gCalUrl = Utils::getGoogleCalendarUrl($gEvent);
                     ?>
                         <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-900/20 transition-colors <?php echo $completed ? 'opacity-60' : ''; ?>">
                             <td class="py-3.5" data-order="<?php echo $task['task_date']; ?>">
@@ -100,6 +121,18 @@ ob_start();
                                             title="แก้ไข">
                                         <i class="fas fa-edit text-xs"></i>
                                     </button>
+                                    <!-- Google Calendar Button -->
+                                    <a href="<?php echo $gCalUrl; ?>" target="_blank"
+                                       class="p-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 rounded-xl transition-all"
+                                       title="เพิ่มลง Google Calendar">
+                                        <i class="fab fa-google text-xs"></i>
+                                    </a>
+                                    <!-- iCal Button -->
+                                    <a href="index.php?action=task_export_ics&id=<?php echo $task['id']; ?>"
+                                       class="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl transition-all"
+                                       title="ดาวน์โหลด iCal (.ics)">
+                                        <i class="fas fa-calendar-alt text-xs"></i>
+                                    </a>
                                     <!-- Delete Button -->
                                     <button onclick="confirmDelete(<?php echo $task['id']; ?>)" 
                                             class="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-all"

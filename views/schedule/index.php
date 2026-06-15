@@ -16,6 +16,9 @@ ob_start();
         <button onclick="confirmImport()" class="bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl px-4 py-3 text-white text-xs font-bold shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-95 transition-all">
             <i class="fas fa-file-import mr-2"></i>นำเข้าจากระบบรายงานการสอน (cktech)
         </button>
+        <a href="index.php?action=schedule_export_ics" class="bg-gradient-to-r from-violet-500 to-indigo-600 rounded-xl px-4 py-3 text-white text-xs font-bold shadow-lg shadow-violet-500/20 hover:shadow-violet-500/40 hover:scale-[1.02] active:scale-95 transition-all">
+            <i class="fas fa-file-export mr-2"></i>ส่งออกตารางสอน (.ics)
+        </a>
         <button onclick="openAddModal()" class="btn-primary rounded-xl px-4 py-3 text-white text-xs font-bold shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-95 transition-all">
             <i class="fas fa-plus mr-2"></i>เพิ่มตารางสอนใหม่
         </button>
@@ -49,6 +52,24 @@ ob_start();
                     <?php foreach ($schedules as $sch): 
                         $dayName = Utils::getDayThaiName($sch['day_of_week']);
                         $dayColor = Utils::getDayColorClass($sch['day_of_week']);
+
+                        // Construct Google Calendar URL for recurring schedule
+                        $nextDate = Utils::getNextWeekdayDate($sch['day_of_week']);
+                        $byDayMap = [1 => 'MO', 2 => 'TU', 3 => 'WE', 4 => 'TH', 5 => 'FR', 6 => 'SA', 7 => 'SU'];
+                        $byDay = $byDayMap[$sch['day_of_week']] ?? 'MO';
+                        $startTime = date('His', strtotime($sch['start_time']));
+                        $endTime = date('His', strtotime($sch['end_time']));
+                        
+                        $gEvent = [
+                            'summary' => $sch['subject_code'] . ' - ' . $sch['subject_name'] . ' (' . $sch['class_name'] . ')',
+                            'description' => 'ห้องเรียน: ' . ($sch['room'] ?: '-'),
+                            'location' => $sch['room'] ?: '',
+                            'all_day' => false,
+                            'start_datetime' => date('Ymd', strtotime($nextDate)) . 'T' . $startTime,
+                            'end_datetime' => date('Ymd', strtotime($nextDate)) . 'T' . $endTime,
+                            'rrule' => 'FREQ=WEEKLY;BYDAY=' . $byDay
+                        ];
+                        $gCalUrl = Utils::getGoogleCalendarUrl($gEvent);
                     ?>
                         <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-900/20 transition-colors">
                             <td class="py-3.5 text-center">
@@ -70,6 +91,18 @@ ob_start();
                                             title="แก้ไข">
                                         <i class="fas fa-edit text-xs"></i>
                                     </button>
+                                    <!-- Google Calendar Button -->
+                                    <a href="<?php echo $gCalUrl; ?>" target="_blank"
+                                       class="p-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 rounded-xl transition-all"
+                                       title="เพิ่มลง Google Calendar">
+                                        <i class="fab fa-google text-xs"></i>
+                                    </a>
+                                    <!-- iCal Button -->
+                                    <a href="index.php?action=schedule_export_ics&id=<?php echo $sch['id']; ?>"
+                                       class="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl transition-all"
+                                       title="ดาวน์โหลด iCal (.ics)">
+                                        <i class="fas fa-calendar-alt text-xs"></i>
+                                    </a>
                                     <button onclick="confirmDelete(<?php echo $sch['id']; ?>)" 
                                             class="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-all"
                                             title="ลบ">

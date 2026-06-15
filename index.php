@@ -51,6 +51,10 @@ switch ($action) {
         $controller = new ScheduleController($db);
         $controller->delete();
         break;
+    case 'schedule_export_ics':
+        $controller = new ScheduleController($db);
+        $controller->exportIcs();
+        break;
     case 'schedule_import_cktech':
         $controller = new ScheduleController($db);
         $controller->importFromCktech();
@@ -87,6 +91,10 @@ switch ($action) {
     case 'task_ai_analyze':
         $controller = new TaskController($db);
         $controller->analyzeAiTask();
+        break;
+    case 'task_export_ics':
+        $controller = new TaskController($db);
+        $controller->exportIcs();
         break;
         
     case 'setting':
