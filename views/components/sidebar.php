@@ -104,7 +104,7 @@ $menuItems = [
                         <i class="fas fa-chalkboard-teacher text-white"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-semibold text-white truncate">คุณครู<?php echo htmlspecialchars($userName); ?></p>
+                        <p class="text-sm font-semibold text-white truncate">คุณครู<?php echo htmlspecialchars(Utils::cleanTitlePrefix($userName)); ?></p>
                         <p class="text-[10px] text-indigo-300 truncate"><?php echo htmlspecialchars($userEmail); ?></p>
                     </div>
                 </div>
